@@ -16,10 +16,6 @@ Main features:
 - Multi-tenancy: Operate APIs for multiple contracts within one framework
 - User authentication using [Devise](https://github.com/plataformatec/devise) and role-based user authorization using [cancancan](https://github.com/CanCanCommunity/cancancan)
 
-Associated paper:
-
-[Contract Statements Knowledge Service for Chatbots](https://arxiv.org/abs/1802.04422) by Boris Ruf, Matteo Sammarco and Marcin Detyniecki.
-
 ## Setup
 
 ### 0. Requirements
