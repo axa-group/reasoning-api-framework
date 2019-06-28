@@ -1,0 +1,28 @@
+!!!
+%html
+  %head
+    = action_cable_meta_tag
+    %meta{name: "viewport", content: "width=device-width, initial-scale=1.0"}
+    %meta{name: "description", content: "#{content_for?(:description) ? yield(:description) : 'Reasoning API'}"}
+    - title = "Reasoning API"
+    %title= content_for?(:title) ? yield(:title) : title
+    = stylesheet_link_tag 'application', media: 'all'
+    = stylesheet_link_tag "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    = javascript_include_tag "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+    = javascript_include_tag "https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.3/js/tether.min.js"
+    = javascript_include_tag 'application'
+    = favicon_link_tag 'favicon.ico'
+
+    = csrf_meta_tags
+  %body
+    %header
+      = render 'layouts/navigation'
+    %main{role: "main"}
+      = render 'layouts/messages'
+      = yield
+
+  
+    %footer.footer.mt-1{role: "footer"}
+      .container
+        %br
+        %p.small.pull-right= "0.8.0-#{Git::REVISION.to_s[0,7]}"

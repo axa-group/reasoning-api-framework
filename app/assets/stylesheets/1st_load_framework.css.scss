@@ -1,0 +1,209 @@
+// import the CSS framework
+// Do not use *= require in Sass or your other stylesheets will not be able to access the Bootstrap mixins and variables.
+
+@import "bootstrap";
+
+
+// make all images responsive by default
+img {
+  @extend .img-fluid;
+  margin: 0 auto;
+}
+// override for the 'Home' navigation link
+.navbar-brand {
+  font-size: inherit;
+  }
+
+// THESE ARE EXAMPLES YOU CAN MODIFY
+// create your own classes
+// to make views framework-neutral
+.column {
+  @extend .col-md-6;
+  text-align: center;
+}
+.form {
+  @extend .col-md-6;
+}
+.form-centered {
+  @extend .col-md-6;
+  text-align: center;
+}
+.submit {
+  @extend .btn;
+  @extend .btn-primary;
+  @extend .btn-lg;
+}
+
+// apply styles to HTML elements
+// to make views framework-neutral
+main {
+  @extend .container;
+  margin-top: 100px; // accommodate the navbar
+}
+
+section {
+  @extend .row;
+  margin-top: 20px;
+}
+
+.bg-light {
+  background-color: #11606D !important;
+  
+}
+
+.navbar-light .navbar-nav .nav-link {
+  color: #FFFFFF;
+}
+
+.navbar-light .navbar-nav .nav-link:hover, .navbar-light .navbar-nav .nav-link:focus {
+  color: #149EB9;
+}
+
+a.navbar-brand h5 {
+  color: white;
+}
+
+#navbarNav {
+  i.fa.fa-cog {
+    color: #FFFFFF !important;
+  }
+}
+
+
+a.btn {
+  color: #11606D;
+}
+
+.alert-success {
+  background-color: #149EB9;
+  border-color: #78B8C5;
+  color: #FFFFFF;
+}
+
+a.btn-danger.btn, a.btn-warning.btn {
+  color: white;
+}
+
+input.btn-primary.btn, input.btn-secondary.btn {
+  color: #064360;
+}
+
+input.btn-primary, a.btn-primary, input.btn-secondary, a.btn-secondary {
+  background-color: white;
+  border-color: #064360;
+
+}
+
+input.btn-warning {
+  background-color: #f07662;
+  border-color: #f07662;
+}
+
+h3 {
+  margin: 10px 0px 40px 0px;
+//  color: #064360;
+}
+
+.list-group-item.active {
+  background-color: #064360; 
+  border-color: #064360;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active, .btn-primary.active, .open>.dropdown-toggle.btn-primary,
+.btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active, .btn-secondary.active, .open>.dropdown-toggle.btn-secondary {
+  background-color: #064360; 
+  color: white !important;
+}
+
+.bg-light select {
+  border-color: #064360 !important; 
+}
+
+span.select2-container--default .select2-selection--single {
+    border-color: #064360 !important;   
+    height: 38px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 34px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+  margin-top: 2px !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: #064360 !important;
+}
+
+span.select2-selection--multiple {
+  min-height: 70px !important;
+  border-radius: 4px !important;
+}
+
+i.fa.fa-cog {
+  color: #064360 !important;
+}
+
+.btn-primary.disabled, .disabled.submit, .btn-primary:disabled, .submit:disabled {
+  background-color: #025aa5 !important;
+  border-color: #01549b !important;
+  color: white !important;
+}
+
+i.fa.fa-check-circle {
+  color: #FFFFFF;
+}
+
+// Kaminari styling
+.pagination a, .pagination span.current, .pagination span.gap {
+  float: left;
+  padding: 0 14px;
+  line-height: 38px;
+  text-decoration: none;
+  background-color: white;
+  border: 1px solid #DDD;
+  border-left-width: 0;
+}
+
+.pagination {
+  border-left: 1px solid #ddd;
+  .first{
+    padding : 0;
+    float: none;
+    border: none;
+  }
+  .prev {
+    padding : 0;
+    float: none;
+    border: none;
+  }
+  .page{
+    padding : 0;
+    float: none;
+    border: none;
+  }
+  .next{
+    padding : 0;
+    float: none;
+    border: none;
+  }
+  .last{
+    padding : 0;
+    float: none;
+    border: none;
+  }
+}
+
+#flash_notice {
+  a {
+    color: white;
+    text-decoration: underline;
+  }
+}
+
+div.alert {
+  button.close {
+    color: white;
+  }  
+}

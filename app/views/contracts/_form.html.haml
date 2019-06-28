@@ -1,0 +1,12 @@
+= simple_form_for(contract, html: { class: 'form-horizontal' }) do |form|
+  
+  = form.input :name, required: false
+  
+  = form.submit "Save", class: "btn btn-primary"
+  = link_to "Cancel", @contract.persisted? ? contract_statements_path(@contract) : contracts_path, class: "btn"
+
+
+  - unless @contract.new_record?
+    .float-right
+      = link_to "Delete", contract_path(@contract), method: :delete, class: "btn btn-danger", data: { confirm: "This action will completely delete the contract, including all statements. Are you sure?" } if can? :destroy, @contract
+

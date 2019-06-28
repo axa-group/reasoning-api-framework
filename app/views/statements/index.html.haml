@@ -1,0 +1,21 @@
+.container
+  %h3 Statements
+  .row
+    .col-10
+      - if @statements.blank?
+        .alert.alert-warning 
+          %em No statements available yet
+      - else
+
+        %table.table.table-striped
+          - @statements.each do |s|
+            %tr
+              %td= link_to s.name, edit_contract_statement_path(@contract, s)
+
+    .col-2
+      .list-group
+        - if can? :create, Statement
+          = link_to new_contract_statement_path(@contract), class: "btn btn-primary" do
+            %i.fa.fa-plus-circle
+            Add
+

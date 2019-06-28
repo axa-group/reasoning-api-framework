@@ -1,0 +1,39 @@
+.modal{tabindex: "-1", role: "dialog", id: f.object.timestamp || "_new_number_ranges_"}
+  .modal-dialog{role: "document"}
+    .modal-content
+      .modal-header
+        %h5.modal-title Number range
+        %button.close{type: "button", "data-dismiss": "modal", "aria-label": "Close"}
+        %span{"aria-hidden": "true"} &times;
+      .modal-body
+        = f.input :number_from, input_html: {rows: 2}, label: "From"
+        = f.input :number_to, input_html: {rows: 2}, label: "To"
+        = f.input :parameter, as: "hidden", input_html: {id: "parameter"}
+        = f.input :id, as: "hidden", input_html: {value: f.object.id}
+        = f.input :timestamp, as: "hidden", input_html: {value: f.object.timestamp || "_new_number_ranges_"}
+        .delete
+          = link_to_remove_association "remove task", f, style: "display:none" 
+      .modal-footer
+        = link_to "OK", "#", class: "btn btn-primary", "data-dismiss": "modal"
+
+:javascript
+  $('#' + '#{f.object.timestamp || "_new_number_ranges_"}').on('hidden.bs.modal', function (e) {
+    
+    // find corresponding cell
+    var cell = editor.graph.getChildVertices(editor.graph.getDefaultParent()).filter(function(v){ 
+      return v.style == "number_range" && v.getAttribute("timestamp") == '#{f.object.timestamp || "_new_number_ranges_"}'; 
+    })[0];
+
+    // update cell label
+    var node = cell.value;
+    var from = $('#' + '#{f.object.timestamp || "_new_number_ranges_"}' +' .statement_number_ranges_number_from input').val();
+    var to = $('#' + '#{f.object.timestamp || "_new_number_ranges_"}' +' .statement_number_ranges_number_to input').val();
+    if (from == to) {
+      label = from;
+    } else {
+      label = from + "..." + to;
+    }
+
+    node.setAttribute('label', label);
+    editor.graph.model.setValue(cell, node);
+  });

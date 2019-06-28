@@ -1,0 +1,604 @@
+:javascript
+  mxBasePath = '/mxClient';
+  mxImageBasePath = '/mxClient/images';
+  mxLoadStylesheets = false;
+
+= javascript_include_tag "javascripts/mxClient"
+
+
+:javascript
+
+  var node_styles = ["entity_cloud", "number_range", "date_range", "response"];
+  var node_layer_styles = ["entity_cloud_layer", "number_range_layer", "date_range_layer"];
+
+  STROKE_COLOR = "#11606D";
+  LAYER_HEIGHT = 110;
+  LAYER_WIDTH = 680;
+  LABEL_WIDTH = 30;
+  NODE_WIDTH = 80;
+  NODE_HEIGHT = 50;
+  MARGIN_RIGHT = 10;
+  MARGIN_TOP = 30;
+  
+
+  mxConstants.DEFAULT_VALID_COLOR = '#ffeeba';
+  mxConstants.VERTEX_SELECTION_COLOR = '#f9f74e';
+  mxConstants.VERTEX_SELECTION_STROKEWIDTH = 3;
+  mxConstants.VERTEX_SELECTION_DASHED = 0;
+  
+  
+  var connectionHandlerConnect = mxConnectionHandler.prototype.connect;
+  
+  mxConnectionHandler.prototype.connect = function(source, target, evt, dropTarget) {
+    // do not allow unconnected edges
+    if (target == null) {
+      return false;
+    } else {
+      connectionHandlerConnect.apply(this, arguments);
+    }
+  }
+  
+  // only allow to move edges
+  mxGraph.prototype.isCellMovable = function(cell) {
+    return (cell.isEdge() ? true : false)
+  }
+  
+  function createEditor(container) {
+  
+    function sortCells() {
+      var vertices = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+        return node_styles.includes(e.style);
+      });
+  
+      // group cells by lane (y coordinate)
+      var vertices_grouped_hash = {};
+      $.each(vertices, function (i, vertex) {
+        var y = vertex.geometry.clone().y;
+        if (vertices_grouped_hash[y] == null) {
+          vertices_grouped_hash[y] = Array();
+        }
+        vertices_grouped_hash[y].push(vertex);
+      });
+  
+      graph.getModel().beginUpdate();
+  
+      // sort cells per lane
+      $.each(vertices_grouped_hash, function (i, vertices_grouped) {
+        
+        var start = LABEL_WIDTH + LAYER_WIDTH/2 - (vertices_grouped.length*(NODE_WIDTH + MARGIN_RIGHT))/2 - MARGIN_RIGHT;
+  
+        for (var i=0; i<vertices_grouped.length; i++) {
+          var vertex = vertices_grouped[i];
+          var geo = graph.getCellGeometry(vertex).clone();
+          geo.x = start + i*(NODE_WIDTH + MARGIN_RIGHT);
+          model.setGeometry(vertex, geo);
+        }
+      });
+  
+      graph.refresh();
+  
+      graph.getModel().endUpdate();
+  
+    }
+  
+    function updateLayers(deleted_y) {
+      var vertices = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+        return e.geometry.y > deleted_y; 
+      });
+  
+      $.each(vertices, function (i, vertex) {
+        var geo = graph.getCellGeometry(vertex).clone();
+        geo.y -= LAYER_HEIGHT;
+        model.setGeometry(vertex, geo);
+      });
+  
+    }
+
+    function getChildren(layer) {
+      return graph.getCells(layer.geometry.x, layer.geometry.y, layer.geometry.width, layer.geometry.height).filter(function(c){ return node_styles.includes(c.style) });
+    }
+      
+    // ask before deleting layers
+    mxGraph.prototype.isCellDeletable = function(cell) {
+      if (node_layer_styles.includes(cell.style)) {
+        if (confirm("Are you sure?") == true) {
+  
+          var children = getChildren(cell);
+          // remove cells
+          graph.removeCells(children);
+          cell.style = "";
+          // remove layer
+          graph.removeCells([cell]);
+          // update remaining layers
+          updateLayers(cell.geometry.y);
+          return false;
+        
+        } else {
+          return false;
+        }
+      } else if (node_styles.includes(cell.style)) {
+        var timestamp = cell.getAttribute("timestamp");
+        $('#' + timestamp + ' div.delete input').val(true);
+        sortCells();
+        return true;
+      } else if (cell.style == "response_layer") {
+        // the response layer cannot be removed
+        return false;
+      } else {
+        return true;
+      }
+    }
+  
+    // override the edit feature to change the label 
+    mxGraph.prototype.isCellEditable = function(cell) {
+      return false;
+    }
+  
+    // Checks if browser is supported
+    if (!mxClient.isBrowserSupported())
+    {
+      // Displays an error message if the browser is
+      // not supported.
+      mxUtils.error('Browser is not supported!', 200, false);
+    }
+    else
+    {
+      // Creates a wrapper editor around a new graph inside
+      // the given container using an XML config for the
+      // keyboard bindings
+      var config = mxUtils.load("#{asset_path('config/workfloweditor.xml')}").getDocumentElement();
+      editor = new mxEditor(config);
+      editor.setGraphContainer(container);
+
+      // TOOLBAR
+      var c = document.getElementById('tbar');
+      var toolbar = new mxDefaultToolbar(c, editor);
+      
+      toolbar.addItem("Insert new node", "/mxClient/images/material/check-box.png", "insertNode");
+      toolbar.addItem("Insert new keywords layer", "/mxClient/images/material/layer-keywords.png", "insertKeywordsLayer");
+      toolbar.addItem("Insert new number range layer", "/mxClient/images/material/layer-number-range.png", "insertNumberRangeLayer");
+      toolbar.addItem("Insert new date range layer", "/mxClient/images/material/layer-date-range.png", "insertDateRangeLayer");
+
+      // create color picker toolbar item
+      var color_picker_toolbar_item = toolbar.addItem(null, null, "insertNode");
+      color_picker_toolbar_item.id = "colorpicker";
+      color_picker_toolbar_item.title = "Change edge color";
+      color_picker_toolbar_item.type = "button";
+      
+      var edge_style = editor.graph.getStylesheet().getDefaultEdgeStyle();
+      color_picker_toolbar_item.style.backgroundColor = STROKE_COLOR;
+      // remove all event listeners to prevent background color from changing back on onmouseevent
+      mxEvent.removeAllListeners(color_picker_toolbar_item);
+      // add onclick event to trigger action
+      color_picker_toolbar_item.addEventListener(mxEvent.CLICK, changeEdgeColor)
+  
+      // action to insert new node
+      editor.addAction('insertNode', function(editor) {
+        var cells = editor.graph.getSelectionCells();
+        if (cells.length > 0 && (node_layer_styles.includes(cells[0].style) || cells[0].style == "response_layer")) {
+
+          var parent_width = cells[0].geometry.width - LABEL_WIDTH;
+
+          var vertices = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+            return node_styles.includes(e.style) && e.geometry.y == cells[0].geometry.y + MARGIN_TOP; 
+          });
+
+          if ((vertices.length + 1)*(NODE_WIDTH + MARGIN_RIGHT) > parent_width) {
+            alert("The maximum number of nodes for this layer has been exceeded");
+            return;
+          }
+
+          if (cells[0].style == "entity_cloud_layer") {
+            // add dynamic nested form fields for entity cloud
+            $(".entity-clouds a.add_fields").click();
+            // identify partial timestamp
+            var timestamp = $('.entity-clouds .modal').last().find('.statement_entity_clouds_timestamp input').val();
+            // set layer label as entity cloud parameter 
+            $('#' + timestamp + ' div.statement_entity_clouds_parameter input').val(cells[0].getAttribute('label'));
+            // open bootstrap modal window
+            $('#' + timestamp).modal('show');
+            // insert node in diagram
+            addVertex(editor.graph, editor.graph.getModel(), vertices, cells[0], timestamp, 'entity_cloud');
+          }
+
+          if (cells[0].style == "number_range_layer") {
+            // add dynamic nested form fields for response
+            $(".number-ranges a.add_fields").click();
+            // identify partial timestamp
+            var timestamp = $('.number-ranges .modal').last().find('.statement_number_ranges_timestamp input').val();
+            // set layer label as number range parameter 
+            $('#' + timestamp + ' div.statement_number_ranges_parameter input').val(cells[0].getAttribute('label'));
+            // open bootstrap modal window
+            $('#' + timestamp).modal('show');
+            // insert node in diagram
+            addVertex(editor.graph, editor.graph.getModel(), vertices, cells[0], timestamp, 'number_range');
+          }
+
+          if (cells[0].style == "date_range_layer") {
+            // add dynamic nested form fields for response
+            $(".date-ranges a.add_fields").click();
+            // identify partial timestamp
+            var timestamp = $('.date-ranges .modal').last().find('.statement_date_ranges_timestamp input').val();
+            // set layer label as number range parameter 
+            $('#' + timestamp + ' div.statement_date_ranges_parameter input').val(cells[0].getAttribute('label'));
+            // open bootstrap modal window
+            $('#' + timestamp).modal('show');
+            // insert node in diagram
+            addVertex(editor.graph, editor.graph.getModel(), vertices, cells[0], timestamp, 'date_range');
+          }
+
+          if (cells[0].style == "response_layer") {
+            // add dynamic nested form fields for response
+            $(".responses a.add_fields").click();
+            // identify partial timestamp
+            var timestamp = $('.responses .modal').last().find('.statement_responses_timestamp input').val();
+            // open bootstrap modal window
+            $('#' + timestamp).modal('show');
+            // insert node in diagram
+            addVertex(editor.graph, editor.graph.getModel(), vertices, cells[0], timestamp, 'response');
+          }
+
+        } else {
+          alert("Please select a layer");
+        }
+      });
+  
+      // action to insert new keywords layer
+      editor.addAction('insertKeywordsLayer', function(editor) {
+        insertLayer('entity_cloud_layer');
+      });
+
+      // action to insert new number range layer
+      editor.addAction('insertNumberRangeLayer', function(editor) {
+        insertLayer('number_range_layer');
+      });
+
+      // action to insert new date range layer
+      editor.addAction('insertDateRangeLayer', function(editor) {
+        insertLayer('date_range_layer');
+      });
+
+      function insertLayer(style) {
+        var parameter = mxUtils.prompt("Enter parameter name:", "");
+        if (parameter != null) {
+          if (/^\w+$/.test(parameter)) {
+            addLayer(editor.graph.getDefaultParent(), parameter, style);
+          } else {
+            mxUtils.alert("Parameters may only include alphanumeric characters without whitespace.");
+          }
+        }
+      }
+  
+      // method to change edge color
+      function changeEdgeColor() {
+
+        // prompt for new edge color
+        var color = mxUtils.prompt("Enter new edge color:", STROKE_COLOR);
+        
+        if (color != null) {
+          // set new edge color
+          STROKE_COLOR = color;
+  
+          // update toolbar item color
+          $("#colorpicker")[0].style.setProperty("background-color", STROKE_COLOR, "important")
+        }
+        
+      }
+  
+      // disallow specific connections
+      mxConnectionHandler.prototype.validateConnection = function(source, target) {
+        
+        // disallow connections where a connection of the same color already exists
+        var edges = new Array();
+
+        // identify all vertices on the same level as the new source and target
+        var vertices = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+          return node_styles.includes(e.style) && (e.geometry.y == source.geometry.y || e.geometry.y == target.geometry.y); 
+        });
+
+        // check if edges of the same color already exist
+        $.each(vertices, function (x, v) {
+          $.each(v.edges, function (y, e) {
+            if (graph.getCellStyle(e).strokeColor == STROKE_COLOR && vertices.includes(e.source) && vertices.includes(e.target)) {
+              edges.push(e);
+            }
+          });
+        });
+        
+        if (edges.length > 0) {
+          return false;
+        }
+        // disallow connections within in the same layer
+        return (source.geometry.y == target.geometry.y ? false : null)
+      }
+  
+      var graph = editor.graph;
+      var model = graph.getModel();
+  
+      // Changes the default vertex style in-place
+      var style = graph.getStylesheet().getDefaultVertexStyle();
+      style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_SWIMLANE;
+      style[mxConstants.STYLE_VERTICAL_ALIGN] = 'middle';
+      style[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = 'white';
+      style[mxConstants.STYLE_FONTSIZE] = 11;
+      style[mxConstants.STYLE_HORIZONTAL] = false;
+      style[mxConstants.STYLE_FONTCOLOR] = 'black';
+      style[mxConstants.STYLE_STROKECOLOR] = '#ced4da';
+      style[mxConstants.STYLE_STARTSIZE] = 30;
+      style[mxConstants.STYLE_ROUNDED] = true;
+      style[mxConstants.STYLE_ARCSIZE] = 6;
+      delete style[mxConstants.STYLE_FILLCOLOR];
+  
+      style = mxUtils.clone(style);
+      style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;
+      style[mxConstants.STYLE_FONTSIZE] = 10;
+      style[mxConstants.STYLE_ROUNDED] = false;
+      style[mxConstants.STYLE_HORIZONTAL] = true;
+      style[mxConstants.STYLE_VERTICAL_ALIGN] = 'middle';
+      delete style[mxConstants.STYLE_STARTSIZE];
+      style[mxConstants.STYLE_MOVABLE] = 0;
+      style[mxConstants.STYLE_RESIZABLE] = 0;
+      style[mxConstants.STYLE_STROKEWIDTH] = 1;
+      style[mxConstants.STYLE_FILLCOLOR] = 'white';
+      style[mxConstants.STYLE_STROKECOLOR] = '#11606D';
+
+      graph.getStylesheet().putCellStyle('process', style);
+
+      var cloud_style = mxUtils.clone(style);
+      graph.getStylesheet().putCellStyle('entity_cloud', cloud_style);
+
+      var number_range_style = mxUtils.clone(cloud_style);
+      graph.getStylesheet().putCellStyle('number_range', number_range_style);
+
+      var date_range_style = mxUtils.clone(cloud_style);
+      graph.getStylesheet().putCellStyle('date_range', date_range_style);
+
+      var response_style = mxUtils.clone(cloud_style);
+      graph.getStylesheet().putCellStyle('response', response_style);
+      
+      var entity_cloud_layer = graph.getStylesheet().getDefaultVertexStyle();
+      entity_cloud_layer[mxConstants.STYLE_FOLDABLE] = 0;
+      entity_cloud_layer[mxConstants.STYLE_RESIZABLE] = 0;
+      entity_cloud_layer[mxConstants.STYLE_FILLCOLOR] = '#ade6bb';
+      entity_cloud_layer[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = '#ade6bb';
+      graph.getStylesheet().putCellStyle('entity_cloud_layer', entity_cloud_layer);
+      graph.getStylesheet().putDefaultVertexStyle(entity_cloud_layer);
+
+      var response_layer = mxUtils.clone(entity_cloud_layer);
+      response_layer[mxConstants.STYLE_FILLCOLOR] = '#FFFFFF';
+      response_layer[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = '#FFFFFF';
+      graph.getStylesheet().putCellStyle('response_layer', response_layer);
+
+      var number_range_layer = mxUtils.clone(entity_cloud_layer);
+      number_range_layer[mxConstants.STYLE_FILLCOLOR] = 'lightblue';
+      number_range_layer[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = 'lightblue';
+      graph.getStylesheet().putCellStyle('number_range_layer', number_range_layer);
+
+      var date_range_layer = mxUtils.clone(entity_cloud_layer);
+      date_range_layer[mxConstants.STYLE_FILLCOLOR] = '#b4ade6';
+      date_range_layer[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = '#b4ade6';
+      graph.getStylesheet().putCellStyle('date_range_layer', date_range_layer);
+  
+      var edge_style = graph.getStylesheet().getDefaultEdgeStyle();
+      edge_style[mxConstants.STYLE_ENDARROW] = 0;
+      edge_style[mxConstants.STYLE_STROKEWIDTH] = 4;
+  
+      graph.getStylesheet().putDefaultEdgeStyle(edge_style);
+      //edge_style[mxConstants.STYLE_EDGE] = mxEdgeStyle.TopToBottom;
+    
+      //graph.alternateEdgeStyle = 'elbow=vertical';
+  
+      
+      graph.setConnectable(true);
+      graph.setAllowDanglingEdges(true);
+  
+      graph.convertValueToString = function(cell) {
+        if (mxUtils.isNode(cell.value)) {
+          return cell.getAttribute('label', '')
+        }
+      };
+  
+      graph.addListener(mxEvent.DOUBLE_CLICK, function(sender, evt){
+        var cell = evt.getProperty('cell')
+        if (cell != null) {
+          if (node_layer_styles.includes(cell.style)) {
+            var parameter = cell.getAttribute("label");
+            var new_parameter = mxUtils.prompt("Enter parameter name:", parameter);
+  
+            if (new_parameter == null) {
+              return false;
+            } if (/^\w+$/.test(new_parameter)) {
+              var node = cell.value;
+              node.setAttribute("label", new_parameter);
+              graph.model.setValue(cell, node);
+    
+              // update parameter fields for all nodes of the layer
+              var children = getChildren(cell);
+              $.each(children, function (i, c) {
+                $('#' + c.getAttribute('timestamp') + ' #parameter').val(new_parameter);
+              });
+            } else {
+              mxUtils.alert("Parameters may only include alphanumeric characters without whitespace.");
+            }   
+  
+          } else if (node_styles.includes(cell.style)) {
+            var timestamp = cell.getAttribute('timestamp');
+            $('#' + timestamp).modal('show');
+          }
+        }
+      });
+  
+      // move edges to background
+      graph.addListener(mxEvent.CELLS_ADDED, function(sender, evt) {
+        var edges = graph.getChildEdges(graph.getDefaultParent());
+        graph.orderCells(true, edges);
+      });
+  
+      // set connection stroke color to current color picker color
+      graph.connectionHandler.addListener(mxEvent.CONNECT, function(sender, evt) {
+        var edge = evt.getProperty('cell');
+        graph.setCellStyles(mxConstants.STYLE_STROKECOLOR, STROKE_COLOR, [edge]);
+      });
+  
+  
+      var layout = new mxParallelEdgeLayout(graph);
+      layout.spacing = 20;
+  
+      var layoutMgr = new mxLayoutManager(graph);
+  
+      layoutMgr.getLayout = function(cell) {
+        return layout;
+      };
+  
+      layout.execute(graph.getDefaultParent());
+  
+      function addVertex(graph, model, vertices, parent, timestamp, style) {
+        
+        var doc = mxUtils.createXmlDocument();
+        var node = doc.createElement('metadata');
+        node.setAttribute('timestamp', timestamp);
+  
+        graph.insertVertex(graph.getDefaultParent(), null, node, parent.geometry.width - NODE_WIDTH, parent.geometry.y +   MARGIN_TOP, NODE_WIDTH, NODE_HEIGHT, style, false);
+  
+        sortCells();  
+      }
+  
+      // insert new layer
+      function addLayer(parent, label, style) {
+        var doc = mxUtils.createXmlDocument();
+        var node = doc.createElement('metadata');
+        node.setAttribute('label', label);
+  
+        // get all response vertices
+        var response_vertices = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+          return e.style == 'response'
+        });
+
+        // get all response layers
+        var response_layers = graph.getChildVertices(graph.getDefaultParent()).filter(function(e){ 
+          return e.style == 'response_layer'
+        });
+
+        var old_response_layer_y = 0;
+        if (response_layers.length > 0) {
+          old_response_layer_y = graph.getCellGeometry(response_layers[0]).clone().y;
+        }
+
+        // move the response layer and its vertices down
+        $.each(response_layers.concat(response_vertices), function (i, layer) {
+          var geo = graph.getCellGeometry(layer).clone();
+          geo.y += LAYER_HEIGHT;
+          model.setGeometry(layer, geo);
+        });
+        
+        // insert new layer above the response layer
+        var layer = graph.insertVertex(parent, null, node, 1, old_response_layer_y, LAYER_WIDTH, LAYER_HEIGHT, style);
+        layer.setConnectable(false);
+      }
+      
+      // Gets the default parent for inserting new cells. This
+      // is normally the first child of the root (ie. layer 0).
+      var parent = graph.getDefaultParent();
+  
+      //editor.open(DIAGRAM_XML_URL + '?' + new Date().getTime());
+
+      var doc = mxUtils.parseXml($('#statement_diagram_xml').val());
+      var node = doc.documentElement;
+      editor.readGraphModel(node);
+  
+      //diagram empty, draw scaffold
+      if (graph.getChildVertices(graph.getDefaultParent()).length == 0) {
+  
+        // Adds cells to the model in a single step
+        model.beginUpdate();
+        try {
+          addLayer(parent, 'Response', 'response_layer');
+          addLayer(parent, 'parameter_1', 'entity_cloud_layer');
+        } finally {
+          // Updates the display
+          model.endUpdate();
+        }
+      }
+    }
+  
+    return editor;
+  }
+  
+  //var DIAGRAM_XML_URL = "#{@statement.present? && @statement.persisted? ? contract_statement_diagram_path(@contract, @statement) : ''}";
+  //
+  //$(window).on('beforeunload', function(){
+  //
+  //  var xmlHttp = new XMLHttpRequest();
+  //  xmlHttp.open( "GET", DIAGRAM_XML_URL, false);
+  //  xmlHttp.send( null );
+  //  var saved_xml = xmlHttp.responseText;
+  //  
+  //  var current_xml = editor.writeGraphModel();
+  //
+  //  if (saved_xml.length != current_xml.length) {
+  //    return mxResources.get('changesLost'); 
+  //  } else {
+  //    true;
+  //  }
+  //  
+  //});
+  
+  
+  $(document).ready(function() {
+    editor = createEditor(document.getElementById('graph'));
+  });
+
+.container
+  .row
+    .col-9
+      = simple_form_for([@contract, @statement], html: { autocomplete: "off", onsubmit: "$('#statement_diagram_xml').val(editor.writeGraphModel());" }) do |f|
+        = f.input :contract_id, as: "hidden", input_html: {value: @contract.id}
+        = f.input :name, input_html: {style: "width:680px"}
+        %label Statement
+        %br
+        #graph.base{style:"width:680px;float:left;margin-right:20px"}
+        .mxWindow
+          %table.mxWindow
+            %tr
+              %td.mxWindowPane{id: "tbar"}
+        %br{clear: "both"}
+        
+        = f.input :diagram_xml, as: "hidden"
+        .entity-clouds
+          = f.simple_fields_for :entity_clouds do |ec|
+            = render 'entity_cloud_fields', :f => ec
+          .links
+            = link_to_add_association f, :entity_clouds, data: {"association-insertion-node": ".entity-clouds", "association-insertion-method": "append"}, style: "display:none" do
+              Add
+        .number-ranges
+          = f.simple_fields_for :number_ranges do |nr|
+            = render 'number_range_fields', :f => nr
+          .links
+            = link_to_add_association f, :number_ranges, data: {"association-insertion-node": ".number-ranges", "association-insertion-method": "append"}, style: "display:none" do
+              Add
+        .date-ranges
+          = f.simple_fields_for :date_ranges do |nr|
+            = render 'date_range_fields', :f => nr
+          .links
+            = link_to_add_association f, :date_ranges, data: {"association-insertion-node": ".date-ranges", "association-insertion-method": "append"}, style: "display:none" do
+              Add
+        .responses
+          = f.simple_fields_for :responses do |r|
+            = render 'response_fields', :f => r
+          .links
+            = link_to_add_association f, :responses, data: {"association-insertion-node": ".responses", "association-insertion-method": "append"}, style: "display:none" do
+              Add
+        .form-group{style: "width:680px"}
+          = f.submit "Save", class: "btn btn-primary"
+          = link_to "Cancel", contract_statements_path(@contract), class: "btn"
+          - unless @statement.new_record?
+            .float-right
+              = link_to "Delete", contract_statement_path(@contract, @statement), method: :delete, class: "btn btn-danger", data: { confirm: "Do you really want to delete this statement?" } if can? :destroy, @statement
+
+    .col-3
+      - if @statement.present? && @statement.persisted?
+        .card
+          .card-header
+            API url
+          %div{style: "padding: 10px"}
+            = text_area_tag :embed_code, contract_statement_url(@contract, @statement, Hash[@statement.parameters.map{|p| [p, ""] } + [[:format, :json]]].symbolize_keys! ), class: "form-control", style: "font-size:12px;height:60px;", onclick: "this.select();", readonly: true

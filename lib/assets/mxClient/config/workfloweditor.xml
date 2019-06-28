@@ -1,0 +1,12 @@
+<mxEditor defaultGroup="group">
+  <ui>
+    <resource basename="/mxClient/resources/app"/>
+  </ui>
+
+  <Array as="templates"/>
+  
+  <mxDefaultKeyHandler as="keyHandler">
+    <add as="8" action="delete"/>
+  </mxDefaultKeyHandler>
+
+</mxEditor>

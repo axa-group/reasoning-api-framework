@@ -1,0 +1,27 @@
+.container
+  %h3 Contracts
+  .row
+    .col-10
+      - if @contracts.blank?
+        .alert.alert-warning
+          .alert-heading 
+            %h3 No contracts available yet
+          %p.mb-0 Please contact an admin user for help.
+      - else
+
+        %table.table.table-striped
+          - @contracts.each do |c|
+            %tr
+              %td= link_to c.name, contract_statements_path(c)
+              %td.pull-right
+                - if can? :edit, c
+                  = link_to edit_contract_path(c) do
+                    %i.fa.fa-cog
+
+    .col-2
+      .list-group
+        - if can? :create, Contract
+          = link_to new_contract_path, class: "btn btn-primary" do
+            %i.fa.fa-plus-circle
+            Add
+

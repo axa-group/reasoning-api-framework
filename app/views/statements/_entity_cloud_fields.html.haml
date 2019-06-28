@@ -1,0 +1,31 @@
+.modal{tabindex: "-1", role: "dialog", id: f.object.timestamp || "_new_entity_clouds_"}
+  .modal-dialog{role: "document"}
+    .modal-content
+      .modal-header
+        %h5.modal-title Entity cloud
+        %button.close{type: "button", "data-dismiss": "modal", "aria-label": "Close"}
+        %span{"aria-hidden": "true"} &times;
+      .modal-body
+        = f.input :name, label: "Name"
+        = f.input :entity_list, collection: f.object.entities.map { |e| e.name }, input_html: { class: "select2", multiple: true }, label: "Entities"
+        = f.input :id, as: "hidden", input_html: {value: f.object.id}
+        = f.input :parameter, as: "hidden", input_html: {id: "parameter"}
+        = f.input :timestamp, as: "hidden", input_html: {value: f.object.timestamp || "_new_entity_clouds_"}
+        .delete
+          = link_to_remove_association "remove task", f, style: "display:none" 
+      .modal-footer
+        = link_to "OK", "#", class: "btn btn-primary",  "data-dismiss": "modal"
+
+:javascript
+  $('#' + '#{f.object.timestamp || "_new_entity_clouds_"}').on('hidden.bs.modal', function (e) {
+    
+    // find corresponding cell
+    var cell = editor.graph.getChildVertices(editor.graph.getDefaultParent()).filter(function(v){ 
+      return v.style == "entity_cloud" && v.getAttribute("timestamp") == '#{f.object.timestamp || "_new_entity_clouds_"}'; 
+    })[0];
+
+    // update cell label
+    var node = cell.value;
+    node.setAttribute('label', $('#' + '#{f.object.timestamp || "_new_entity_clouds_"}' +' .statement_entity_clouds_name input').val());
+    editor.graph.model.setValue(cell, node);
+  });

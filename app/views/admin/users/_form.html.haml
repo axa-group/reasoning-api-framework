@@ -1,0 +1,19 @@
+= simple_form_for([:admin, @user], html: { class: 'form-horizontal' }) do |form|
+  = form.input :email
+  = form.input :password, hint: "Leave blank to keep the existing password"
+  = form.input :password_confirmation
+  = form.input :role, collection: User::ROLES.map{|u| [u.to_s.titleize, u]}, include_blank: true if current_user.role == "admin"
+  = form.association :contracts, input_html: { class: "select2" } if current_user.role == "admin"
+  = form.submit "Save", class: "btn btn-primary"
+  = link_to "Cancel", current_user.role == "admin" ? admin_users_path : root_url, class: "btn"
+
+  
+  - if @user.persisted?
+    - if can? :destroy, @user
+      .pull-right
+  
+        = link_to "Delete account", admin_user_path(@user), method: :delete, class: "btn btn-danger", data: { confirm:   "You are about to delete this user account. Are you sure?" }
+    
+      - if can? :send_password_link, @user
+        .pull-right
+          = link_to "Send password link", admin_user_send_reset_password_instructions_path(@user), method: :post,   class:   "btn"

@@ -1,0 +1,34 @@
+%nav.navbar.navbar-expand-md.navbar-light.bg-light.fixed-top
+  = link_to "#", class: "navbar-brand d-lg-none" do
+    %h5 Reasoning API
+  - if user_signed_in?
+    %button.navbar-toggler.navbar-toggler-right{"type": "button", "data-toggle": "collapse", "data-target": "#navbarNav", "aria-controls": "navbarNav", "aria-expanded": "false", "aria-label": "Toggle navigation"}
+      %span.navbar-toggler-icon
+  
+    .collapse.navbar-collapse#navbarNav
+      %ul.navbar.navbar-nav.mr-auto
+        %li.nav-item
+          %span.float-left
+            = select_tag "", options_for_select(current_user.contracts.map{|c| [c.name, contract_statements_url(c.id)]}, @contract.present? && @contract.persisted? ? contract_statements_url(@contract) : nil), class: "form-control select mr-sm-2", onchange: "window.location=$(this).val();", include_blank: "Select ..."
+          - if @contract.present? && @contract.persisted?
+            %span.float-left
+              = link_to edit_contract_path(@contract), class: "btn btn-default" do
+                %i.fa.fa-cog{style: "color: #464a4c;"}
+        
+      %ul.navbar.navbar-nav
+        - if current_user.role == "admin"
+          
+          %li.nav-item.dropdown
+            = link_to "Administration", "#", "id": "navbarDropdownMenuLink", "data-toggle": "dropdown", "aria-haspopup": "true", "aria-expanded": "false", class: "nav-link dropdown-toggle"
+            .dropdown-menu{"aria-labelledby": "navbarDropdownMenuLink"}
+              = link_to "Contracts", contracts_path, class: "dropdown-item"
+              = link_to "Users", admin_users_path, class: "dropdown-item"
+      
+
+        %li.nav-item.dropdown
+          = link_to current_user, "#", "id": "navbarDropdownMenuLink", "data-toggle": "dropdown", "aria-haspopup": "true", "aria-expanded  ": "false", class: "nav-link dropdown-toggle"
+          .dropdown-menu{"aria-labelledby": "navbarDropdownMenuLink"}
+            = link_to "My account", edit_admin_user_path(current_user), class: "dropdown-item"
+            .dropdown-divider
+            = link_to "Log out", destroy_user_session_path, method: :delete, class: "dropdown-item"
+
