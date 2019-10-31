@@ -34,7 +34,7 @@ gem 'jbuilder', '~> 2.5'
 gem 'bootsnap', '>= 1.1.0', require: false
 gem 'autoprefixer-rails', '8.6.5'
 
-gem 'devise', '4.5.0'
+gem 'devise', '4.7.1'
 gem 'cancancan', '2.3.0'
 gem 'simple_form', '4.1.0'
 gem 'bootstrap', '~> 4.1.0'
