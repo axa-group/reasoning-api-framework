@@ -36,7 +36,7 @@ gem 'autoprefixer-rails', '8.6.5'
 
 gem 'devise', '4.5.0'
 gem 'cancancan', '2.3.0'
-gem 'simple_form', '4.1.0'
+gem 'simple_form', '5.0.0'
 gem 'bootstrap', '~> 4.1.0'
 gem 'haml-rails', '1.0.0'
 gem 'jquery-rails', '4.3.3'
