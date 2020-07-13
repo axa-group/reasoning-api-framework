@@ -1,3 +1,8 @@
+
+__Disclaimer:__ This repository is not maintained anymore!
+
+------
+
 # Reasoning API Framework
 
 A tool to rapidly model contract rules and expose them as APIs for integration with conversational agents.
